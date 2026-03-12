@@ -29,10 +29,10 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PDF_FOLDER'], exist_ok=True)
 
 # API Keys
-GLM_API_KEY = os.getenv('GLM_API_KEY', '9b3dc24e140f4654b2263895d925deaf.tvSgJZ9vqvI0d0Sg')
+KIMI_API_KEY = os.getenv('KIMI_API_KEY', 'sk-aOBf9VcdTltKTDAmUAeOvg1BLsTvFBHO7M35fqrOTZUqpC1M')
 ADMIN_KEY = os.getenv('ADMIN_KEY', 'admin-secret-key-2026')
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://localhost/ai_resume_optimizer')
-GLM_API_URL = 'https://open.bigmodel.cn/api/anthropic/v1/messages'
+KIMI_API_URL = 'https://api.moonshot.cn/v1/chat/completions'
 
 # Database connection pool
 @contextmanager
@@ -67,33 +67,33 @@ def extract_text_from_pdf(file_path):
             text.append(page.extract_text())
     return '\n'.join(text)
 
-def generate_template_with_glm(job_title, years_exp):
-    """使用GLM Coding生成简历模板"""
+def generate_template_with_kimi(job_title, years_exp):
+    """使用Kimi生成简历模板"""
     prompt = f"""为一位{years_exp}年经验的{job_title}生成一份专业简历模板，用Markdown格式输出。
 包含：个人信息、个人总结、工作经历（2段）、技能清单、项目经验（2个）。
 要求简洁专业，突出核心能力和成果。"""
 
     headers = {
-        "Authorization": f"Bearer {GLM_API_KEY}",
+        "Authorization": f"Bearer {KIMI_API_KEY}",
         "Content-Type": "application/json"
     }
 
     payload = {
-        "model": "glm-5",
+        "model": "moonshot-v1-8k",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 4096
+        "temperature": 0.7
     }
 
-    response = requests.post(GLM_API_URL, headers=headers, json=payload)
+    response = requests.post(KIMI_API_URL, headers=headers, json=payload)
     result = response.json()
 
     if 'error' in result:
-        raise Exception(f"GLM API 返回异常: {result['error']}")
+        raise Exception(f"Kimi API 返回异常: {result['error']}")
 
-    return result['content'][0]['text']
+    return result['choices'][0]['message']['content']
 
-def analyze_resume_with_glm(resume_text):
-    """使用GLM Coding分析简历"""
+def analyze_resume_with_kimi(resume_text):
+    """使用Kimi分析简历"""
     prompt = f"""请分析以下简历，并提供：
 1. 简历的主要问题和改进建议
 2. 给出一个综合评分（0-100分）
@@ -117,23 +117,23 @@ def analyze_resume_with_glm(resume_text):
 }}"""
 
     headers = {
-        "Authorization": f"Bearer {GLM_API_KEY}",
+        "Authorization": f"Bearer {KIMI_API_KEY}",
         "Content-Type": "application/json"
     }
 
     payload = {
-        "model": "glm-5",
+        "model": "moonshot-v1-8k",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 4096
+        "temperature": 0.7
     }
 
-    response = requests.post(GLM_API_URL, headers=headers, json=payload)
+    response = requests.post(KIMI_API_URL, headers=headers, json=payload)
     result = response.json()
 
     if 'error' in result:
-        raise Exception(f"GLM API 返回异常: {result['error']}")
+        raise Exception(f"Kimi API 返回异常: {result['error']}")
 
-    text = result['content'][0]['text']
+    text = result['choices'][0]['message']['content']
 
     # 清洗 markdown 代码块
     if text.startswith('```json'):
@@ -313,10 +313,10 @@ def generate_template():
         else:
             return jsonify({'success': False, 'error': '余额不足，请充值'}), 400
 
-        # 调用 GLM API 生成
+        # 调用 Kimi API 生成
         try:
             import traceback
-            template = generate_template_with_glm(job_title, years_exp)
+            template = generate_template_with_kimi(job_title, years_exp)
 
             # 保存到数据库
             cur.execute('''
@@ -389,8 +389,8 @@ def optimize_resume():
             else:
                 return jsonify({'success': False, 'error': '不支持的文件格式，请上传PDF或DOCX'}), 400
 
-            # 调用 GLM API 分析
-            result = analyze_resume_with_glm(resume_text)
+            # 调用 Kimi API 分析
+            result = analyze_resume_with_kimi(resume_text)
 
             # 保存到数据库
             cur.execute('''
