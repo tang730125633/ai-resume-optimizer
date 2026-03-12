@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, render_template
 from flask.views import MethodView
 import os
 import psycopg2
@@ -149,6 +149,11 @@ def generate_pdf_from_markdown(content, output_path):
 # ============================================
 # API 路由
 # ============================================
+
+@app.route('/')
+def index():
+    """首页"""
+    return render_template('index.html')
 
 @app.route('/api/user/login', methods=['POST'])
 def user_login():
