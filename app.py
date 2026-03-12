@@ -68,7 +68,7 @@ def extract_text_from_pdf(file_path):
 
 def generate_template_with_gemini(job_title, years_exp):
     """使用Gemini生成简历模板"""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 
     prompt = f"""为一位{years_exp}年经验的{job_title}生成一份专业简历模板，用Markdown格式输出。
 包含：个人信息、个人总结、工作经历（2段）、技能清单、项目经验（2个）。
@@ -85,7 +85,7 @@ def generate_template_with_gemini(job_title, years_exp):
 
 def analyze_resume_with_gemini(resume_text):
     """使用Gemini分析简历"""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 
     prompt = f"""请分析以下简历，并提供：
 1. 简历的主要问题和改进建议
