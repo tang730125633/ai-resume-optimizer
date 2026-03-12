@@ -23,7 +23,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PDF_FOLDER'], exist_ok=True)
 
 # API Keys
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyBjQgTtUnODK8Pd14J-fXweIa0NezoPL2A')
 ADMIN_KEY = os.getenv('ADMIN_KEY', 'admin-secret-key-2026')
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://localhost/ai_resume_optimizer')
 
