@@ -408,14 +408,15 @@
 
                     showToast(data.cost > 0 ? `生成成功，消费 ¥${data.cost}` : '生成成功');
                 } else {
-                    if (data.error.includes('余额不足')) {
-                        showInsufficientModal(data.error, 5);
+                    const errorMsg = data.error || '生成失败';
+                    if (errorMsg.includes('余额不足')) {
+                        showInsufficientModal(errorMsg, 5);
                     } else {
-                        showToast(data.error);
+                        showToast(errorMsg);
                     }
                 }
             } catch (error) {
-                showToast('生成失败：' + error.message);
+                showToast('生成失败：' + (error.message || '未知错误'));
             } finally {
                 btn.disabled = false;
                 btnText.textContent = '一键生成专业模板';
@@ -475,14 +476,15 @@
 
                     showToast(`优化成功，消费 ¥${data.cost}`);
                 } else {
-                    if (data.error.includes('余额不足')) {
-                        showInsufficientModal(data.error, 10);
+                    const errorMsg = data.error || '优化失败';
+                    if (errorMsg.includes('余额不足')) {
+                        showInsufficientModal(errorMsg, 10);
                     } else {
-                        showToast(data.error);
+                        showToast(errorMsg);
                     }
                 }
             } catch (error) {
-                showToast('优化失败：' + error.message);
+                showToast('优化失败：' + (error.message || '未知错误'));
             } finally {
                 btn.disabled = false;
                 btnText.textContent = '开始 AI 优化';
@@ -565,14 +567,15 @@
 
                     showToast(`导出成功，消费 ¥${data.cost}`);
                 } else {
-                    if (data.error.includes('余额不足')) {
-                        showInsufficientModal(data.error, 2);
+                    const errorMsg = data.error || '导出失败';
+                    if (errorMsg.includes('余额不足')) {
+                        showInsufficientModal(errorMsg, 2);
                     } else {
-                        showToast(data.error);
+                        showToast(errorMsg);
                     }
                 }
             } catch (error) {
-                showToast('导出失败：' + error.message);
+                showToast('导出失败：' + (error.message || '未知错误'));
             }
         }
 
