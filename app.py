@@ -65,7 +65,7 @@ def extract_text_from_pdf(file_path):
 
 def generate_template_with_gemini(job_title, years_exp):
     """使用Gemini生成简历模板"""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 
     prompt = f"""为一位{years_exp}年经验的{job_title}生成一份专业简历模板，用Markdown格式输出。
 包含：个人信息、个人总结、工作经历（2段）、技能清单、项目经验（2个）。
@@ -75,11 +75,14 @@ def generate_template_with_gemini(job_title, years_exp):
     response = requests.post(url, json=payload)
     result = response.json()
 
+    if 'candidates' not in result:
+        raise Exception(f"Gemini API 返回异常: {result}")
+
     return result['candidates'][0]['content']['parts'][0]['text']
 
 def analyze_resume_with_gemini(resume_text):
     """使用Gemini分析简历"""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 
     prompt = f"""请分析以下简历，并提供：
 1. 简历的主要问题和改进建议
@@ -107,7 +110,21 @@ def analyze_resume_with_gemini(resume_text):
     response = requests.post(url, json=payload)
     result = response.json()
 
-    return json.loads(result['candidates'][0]['content']['parts'][0]['text'])
+    if 'candidates' not in result:
+        raise Exception(f"Gemini API 返回异常: {result}")
+
+    text = result['candidates'][0]['content']['parts'][0]['text']
+
+    # 清洗 markdown 代码块
+    if text.startswith('```json'):
+        text = text[7:]
+    if text.startswith('```'):
+        text = text[3:]
+    if text.endswith('```'):
+        text = text[:-3]
+    text = text.strip()
+
+    return json.loads(text)
 
 def generate_pdf_from_markdown(content, output_path):
     """从Markdown内容生成PDF"""
