@@ -4,7 +4,6 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from werkzeug.utils import secure_filename
-import anthropic
 from docx import Document
 import PyPDF2
 import requests
@@ -27,7 +26,6 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PDF_FOLDER'], exist_ok=True)
 
 # API Keys
-CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY', '')
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyC_rfK6ondScvmAEyE2hrIEBnm_D9gPVMY')
 ADMIN_KEY = os.getenv('ADMIN_KEY', 'admin-secret-key-2026')
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://localhost/ai_resume_optimizer')
@@ -79,9 +77,9 @@ def generate_template_with_gemini(job_title, years_exp):
 
     return result['candidates'][0]['content']['parts'][0]['text']
 
-def analyze_resume_with_claude(resume_text):
-    """使用Claude分析简历"""
-    client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+def analyze_resume_with_gemini(resume_text):
+    """使用Gemini分析简历"""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={GEMINI_API_KEY}"
 
     prompt = f"""请分析以下简历，并提供：
 1. 简历的主要问题和改进建议
@@ -105,13 +103,11 @@ def analyze_resume_with_claude(resume_text):
   ]
 }}"""
 
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=4000,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    response = requests.post(url, json=payload)
+    result = response.json()
 
-    return json.loads(message.content[0].text)
+    return json.loads(result['candidates'][0]['content']['parts'][0]['text'])
 
 def generate_pdf_from_markdown(content, output_path):
     """从Markdown内容生成PDF"""
@@ -333,8 +329,8 @@ def optimize_resume():
             else:
                 return jsonify({'success': False, 'error': '不支持的文件格式，请上传PDF或DOCX'}), 400
 
-            # 调用 Claude API 分析
-            result = analyze_resume_with_claude(resume_text)
+            # 调用 Gemini API 分析
+            result = analyze_resume_with_gemini(resume_text)
 
             # 保存到数据库
             cur.execute('''
