@@ -79,7 +79,7 @@ def generate_template_with_glm(job_title, years_exp):
     }
 
     payload = {
-        "model": "glm-4-plus",
+        "model": "glm-5",
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 4096
     }
@@ -122,7 +122,7 @@ def analyze_resume_with_glm(resume_text):
     }
 
     payload = {
-        "model": "glm-4-plus",
+        "model": "glm-5",
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 4096
     }
