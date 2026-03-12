@@ -261,6 +261,7 @@ def generate_template():
 
         # 调用 Gemini API 生成
         try:
+            import traceback
             template = generate_template_with_gemini(job_title, years_exp)
 
             # 保存到数据库
@@ -283,7 +284,7 @@ def generate_template():
                 }
             })
         except Exception as e:
-            return jsonify({'success': False, 'error': f'生成失败: {str(e)}'}), 500
+            return jsonify({'success': False, 'error': f'生成失败: {str(e)}', 'detail': traceback.format_exc()}), 500
 
 @app.route('/api/optimize', methods=['POST'])
 def optimize_resume():
