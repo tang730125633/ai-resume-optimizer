@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI简历优化器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
+    <!-- 登录弹窗 -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">欢迎使用 AI 简历优化器</h2>
+            <div class="space-y-4">
+                <input type="tel" id="loginPhone" placeholder="请输入手机号" maxlength="11"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <button onclick="handleLogin()"
+                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition">
+                    登录 / 注册
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 充值弹窗 -->
+    <div id="rechargeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">账户充值</h2>
+                <button onclick="closeRechargeModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <button onclick="selectRecharge(50)" class="recharge-option border-2 border-gray-300 rounded-lg p-4 hover:border-blue-500 transition">
+                    <div class="text-2xl font-bold text-gray-800">¥50</div>
+                </button>
+                <button onclick="selectRecharge(100)" class="recharge-option border-2 border-gray-300 rounded-lg p-4 hover:border-blue-500 transition">
+                    <div class="text-2xl font-bold text-gray-800">¥100</div>
+                    <div class="text-sm text-green-600">送 ¥10</div>
+                </button>
+                <button onclick="selectRecharge(200)" class="recharge-option border-2 border-gray-300 rounded-lg p-4 hover:border-blue-500 transition">
+                    <div class="text-2xl font-bold text-gray-800">¥200</div>
+                    <div class="text-sm text-green-600">送 ¥30</div>
+                </button>
+                <button onclick="selectRecharge(500)" class="recharge-option border-2 border-gray-300 rounded-lg p-4 hover:border-blue-500 transition">
+                    <div class="text-2xl font-bold text-gray-800">¥500</div>
+                    <div class="text-sm text-green-600">送 ¥100</div>
+                </button>
+            </div>
+
+            <div id="rechargeQrArea" class="hidden text-center mb-6">
+                <div class="bg-gray-100 rounded-lg p-6 mb-4">
+                    <div class="w-40 h-40 bg-gray-300 rounded-lg mx-auto flex items-center justify-center text-gray-500 text-sm">
+                        收款二维码
+                    </div>
+                    <p class="mt-3 text-gray-700">请使用微信 / 支付宝扫码支付</p>
+                    <p id="rechargePhoneNote" class="mt-1 text-red-600 font-medium text-sm">转账备注：您的手机号</p>
+                    <p id="rechargeAmountNote" class="mt-1 text-blue-600 font-bold"></p>
+                </div>
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
+                    支付完成后，请联系客服确认到账
+                </div>
+            </div>
+
+            <button onclick="confirmRechargeOrder()"
+                class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition mb-3">
+                我已完成支付，联系客服确认
+            </button>
+            <button onclick="closeRechargeModal()" class="w-full border border-gray-300 text-gray-600 py-3 rounded-lg hover:bg-gray-50 transition">
+                稍后再说
+            </button>
+        </div>
+    </div>
+
+    <!-- 余额不足弹窗 -->
+    <div id="insufficientModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4">
+            <div class="text-center mb-6">
+                <div class="text-5xl mb-3">💰</div>
+                <h3 class="text-xl font-bold text-gray-800">余额不足</h3>
+                <p id="insufficientMsg" class="text-gray-600 mt-2"></p>
+            </div>
+            <button onclick="openRechargeModal(); closeInsufficientModal()"
+                class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-medium mb-3">
+                立即充值
+            </button>
+            <button onclick="closeInsufficientModal()" class="w-full border border-gray-300 text-gray-600 py-3 rounded-lg hover:bg-gray-50 transition">
+                取消
+            </button>
+        </div>
+    </div>
+
+    <!-- 主应用 -->
+    <div id="app" class="hidden">
+        <!-- 顶部导航 -->
+        <nav class="bg-white shadow-sm sticky top-0 z-40">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">📄</span>
+                    <span class="font-bold text-gray-800 text-lg">AI简历优化器</span>
+                </div>
+                <!-- 用户状态栏 -->
+                <div id="userStatusBar" class="flex items-center gap-3 flex-wrap justify-end">
+                    <span id="statusPhone" class="text-sm text-gray-600"></span>
+                    <span id="statusFree" class="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded-full"></span>
+                    <span id="statusBalance" class="text-sm bg-green-100 text-green-700 px-2 py-1 rounded-full"></span>
+                    <button onclick="openRechargeModal()"
+                        class="bg-gradient-to-r from-orange-400 to-pink-500 text-white px-4 py-1.5 rounded-full text-sm font-medium hover:from-orange-500 hover:to-pink-600 transition">
+                        充值
+                    </button>
+                    <button onclick="logout()" class="text-sm text-gray-400 hover:text-gray-600">退出</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容 -->
+        <div class="max-w-6xl mx-auto px-4 py-8">
+            <!-- 标签页导航 -->
+            <div class="flex gap-2 mb-8 border-b border-gray-200">
+                <button onclick="switchTab('generate')" id="tab-generate"
+                    class="tab-btn px-6 py-3 font-medium text-blue-600 border-b-2 border-blue-600">
+                    生成模板
+                </button>
+                <button onclick="switchTab('optimize')" id="tab-optimize"
+                    class="tab-btn px-6 py-3 font-medium text-gray-500 hover:text-gray-700">
+                    优化简历
+                </button>
+                <button onclick="switchTab('history')" id="tab-history"
+                    class="tab-btn px-6 py-3 font-medium text-gray-500 hover:text-gray-700">
+                    历史记录
+                </button>
+            </div>
+
+            <!-- 生成模板 Tab -->
+            <div id="panel-generate" class="tab-panel">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- 左侧：输入区 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-2">AI 智能生成简历模板</h2>
+                        <p class="text-sm text-gray-500 mb-6">输入职位信息，AI 为你生成专业简历框架</p>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">目标职位</label>
+                                <input type="text" id="jobTitle" placeholder="如：Python后端工程师、产品经理"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">工作年限</label>
+                                <input type="number" id="yearsExp" placeholder="工作年限" value="3" min="0" max="30"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+
+                        <div class="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
+                            免费次数剩余：<span id="freeCountDisplay" class="font-bold">-</span> 次 &nbsp;|&nbsp; 用完后每次 ¥5
+                        </div>
+
+                        <button onclick="generateTemplate()" id="generateBtn"
+                            class="mt-6 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition flex items-center justify-center gap-2">
+                            <span id="generateBtnText">一键生成专业模板</span>
+                        </button>
+                    </div>
+
+                    <!-- 右侧：结果区 -->
+                    <div id="generateResultPanel" class="bg-white rounded-2xl shadow-sm p-6">
+                        <div id="generatePlaceholder" class="h-full flex flex-col items-center justify-center text-gray-400 py-16">
+                            <div class="text-6xl mb-4">✨</div>
+                            <p>填写左侧信息，点击生成</p>
+                        </div>
+                        <div id="generateResult" class="hidden">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-gray-800">生成结果</h3>
+                                <div class="flex gap-2">
+                                    <button onclick="copyResult('templateMd')" class="text-sm px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50">复制</button>
+                                    <button onclick="editResult('templateMd')" class="text-sm px-3 py-1 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50">编辑</button>
+                                    <button onclick="exportPDF('templateMd')" class="text-sm px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700">导出 PDF</button>
+                                </div>
+                            </div>
+                            <div id="templateMdView" class="prose prose-sm max-w-none bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto"></div>
+                            <textarea id="templateMd" class="hidden w-full bg-gray-50 rounded-lg p-4 text-sm font-mono max-h-96 overflow-y-auto border border-gray-300 focus:ring-2 focus:ring-blue-500" rows="20"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 优化简历 Tab -->
+            <div id="panel-optimize" class="tab-panel hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- 左侧：上传区 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-2">AI 深度优化简历</h2>
+                        <p class="text-sm text-gray-500 mb-6">上传你的简历，AI 分析问题并生成 3 个优化版本</p>
+
+                        <div id="dropZone" onclick="document.getElementById('fileInput').click()"
+                            class="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition">
+                            <div class="text-5xl mb-3">📄</div>
+                            <p class="font-medium text-gray-700">点击上传简历</p>
+                            <p class="text-sm text-gray-400 mt-1">支持 PDF 或 Word 格式</p>
+                            <input type="file" id="fileInput" accept=".pdf,.docx" class="hidden">
+                        </div>
+                        <div id="fileName" class="mt-3 text-sm text-gray-600 text-center"></div>
+
+                        <div class="mt-4 p-3 bg-purple-50 rounded-lg text-sm text-purple-700">
+                            每次优化 ¥10，生成 3 个专业版本
+                        </div>
+
+                        <button onclick="optimizeResume()" id="optimizeBtn"
+                            class="mt-6 w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition">
+                            <span id="optimizeBtnText">开始 AI 优化</span>
+                        </button>
+                    </div>
+
+                    <!-- 右侧：结果区 -->
+                    <div class="bg-white rounded-2xl shadow-sm p-6">
+                        <div id="optimizePlaceholder" class="h-full flex flex-col items-center justify-center text-gray-400 py-16">
+                            <div class="text-6xl mb-4">💎</div>
+                            <p>上传简历后点击优化</p>
+                        </div>
+                        <div id="optimizeResult" class="hidden">
+                            <div class="mb-4">
+                                <h3 class="font-bold text-gray-800 mb-2">AI 分析报告</h3>
+                                <div id="analysisContent" class="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 max-h-40 overflow-y-auto"></div>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-800 mb-3">3 个优化版本</h3>
+                                <div id="versionsContainer" class="space-y-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 历史记录 Tab -->
+            <div id="panel-history" class="tab-panel hidden">
+                <div class="bg-white rounded-2xl shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold text-gray-800">历史记录</h2>
+                        <button onclick="loadHistory()" class="text-sm text-blue-600 hover:underline">刷新</button>
+                    </div>
+                    <div id="historyList">
+                        <div class="text-center text-gray-400 py-16">
+                            <div class="text-5xl mb-3">📋</div>
+                            <p>暂无历史记录</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结果查看弹窗 -->
+    <div id="viewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between p-6 border-b">
+                <h3 id="viewModalTitle" class="text-xl font-bold text-gray-800"></h3>
+                <div class="flex gap-2">
+                    <button onclick="copyResult('viewContent')" class="text-sm px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50">复制</button>
+                    <button onclick="toggleViewEdit()" id="viewEditBtn" class="text-sm px-3 py-1 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50">编辑</button>
+                    <button onclick="exportPDF('viewContent')" class="text-sm px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700">导出 PDF</button>
+                    <button onclick="closeViewModal()" class="text-gray-500 hover:text-gray-700 text-2xl ml-2">&times;</button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6">
+                <div id="viewContentDisplay" class="prose prose-sm max-w-none"></div>
+                <textarea id="viewContent" class="hidden w-full text-sm font-mono border border-gray-300 rounded-lg p-4 focus:ring-2 focus:ring-blue-500" rows="30"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div id="toast" class="hidden fixed bottom-6 right-6 bg-gray-800 text-white px-5 py-3 rounded-lg shadow-lg z-50 text-sm"></div>
+
+    <script>
+        // 全局状态
+        let currentUser = null;
+        let selectedRechargeAmount = 0;
+
+        // 初始化
+        window.onload = function() {
+            const savedPhone = localStorage.getItem('userPhone');
+            if (savedPhone) {
+                autoLogin(savedPhone);
+            }
+        };
+
+        // 登录处理
+        async function handleLogin() {
+            const phone = document.getElementById('loginPhone').value.trim();
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                showToast('请输入正确的手机号');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({phone})
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    currentUser = data.user;
+                    localStorage.setItem('userPhone', phone);
+                    document.getElementById('loginModal').classList.add('hidden');
+                    document.getElementById('app').classList.remove('hidden');
+                    updateUserStatus();
+                    showToast('登录成功');
+                } else {
+                    showToast(data.error || '登录失败');
+                }
+            } catch (error) {
+                showToast('网络错误：' + error.message);
+            }
+        }
+
+        // 自动登录
+        async function autoLogin(phone) {
+            try {
+                const response = await fetch(`/api/user/info?phone=${phone}`);
+                const data = await response.json();
+                if (data.success) {
+                    currentUser = data.user;
+                    document.getElementById('loginModal').classList.add('hidden');
+                    document.getElementById('app').classList.remove('hidden');
+                    updateUserStatus();
+                }
+            } catch (error) {
+                console.error('自动登录失败', error);
+            }
+        }
+
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('userPhone');
+            currentUser = null;
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('hidden');
+            showToast('已退出登录');
+        }
+
+        // 更新用户状态栏
+        function updateUserStatus() {
+            if (!currentUser) return;
+            const phoneDisplay = currentUser.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+            document.getElementById('statusPhone').textContent = phoneDisplay;
+            document.getElementById('statusFree').textContent = `免费：${currentUser.free_count}/3`;
+            document.getElementById('statusBalance').textContent = `余额：¥${currentUser.balance.toFixed(2)}`;
+            document.getElementById('freeCountDisplay').textContent = currentUser.free_count;
+        }
+
+        // 标签页切换
+        function switchTab(tab) {
+            ['generate', 'optimize', 'history'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                document.getElementById(`tab-${t}`).classList.add('text-gray-500');
+                document.getElementById(`panel-${t}`).classList.add('hidden');
+            });
+            document.getElementById(`tab-${tab}`).classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            document.getElementById(`tab-${tab}`).classList.remove('text-gray-500');
+            document.getElementById(`panel-${tab}`).classList.remove('hidden');
+
+            if (tab === 'history') {
+                loadHistory();
+            }
+        }
+
+        // 生成模板
+        async function generateTemplate() {
+            const jobTitle = document.getElementById('jobTitle').value.trim();
+            const yearsExp = document.getElementById('yearsExp').value;
+
+            if (!jobTitle) {
+                showToast('请输入职位名称');
+                return;
+            }
+
+            const btn = document.getElementById('generateBtn');
+            const btnText = document.getElementById('generateBtnText');
+            btn.disabled = true;
+            btnText.textContent = '生成中...';
+
+            try {
+                const response = await fetch('/api/generate-template', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        job_title: jobTitle,
+                        years_exp: yearsExp
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('templateMd').value = data.template;
+                    document.getElementById('templateMdView').innerHTML = marked.parse(data.template);
+                    document.getElementById('generatePlaceholder').classList.add('hidden');
+                    document.getElementById('generateResult').classList.remove('hidden');
+
+                    // 更新用户状态
+                    currentUser.free_count = data.user.free_count;
+                    currentUser.balance = data.user.balance;
+                    updateUserStatus();
+
+                    showToast(data.cost > 0 ? `生成成功，消费 ¥${data.cost}` : '生成成功');
+                } else {
+                    if (data.error.includes('余额不足')) {
+                        showInsufficientModal(data.error, 5);
+                    } else {
+                        showToast(data.error);
+                    }
+                }
+            } catch (error) {
+                showToast('生成失败：' + error.message);
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = '一键生成专业模板';
+            }
+        }
+
+        // 优化简历
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                document.getElementById('fileName').textContent = `已选择：${e.target.files[0].name}`;
+            }
+        });
+
+        async function optimizeResume() {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files.length) {
+                showToast('请先上传简历文件');
+                return;
+            }
+
+            const btn = document.getElementById('optimizeBtn');
+            const btnText = document.getElementById('optimizeBtnText');
+            btn.disabled = true;
+            btnText.textContent = '优化中...';
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('user_id', currentUser.id);
+
+            try {
+                const response = await fetch('/api/optimize', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('analysisContent').textContent = data.result.analysis;
+
+                    const versionsHtml = data.result.versions.map((v, i) => `
+                        <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-400 transition cursor-pointer" onclick="viewVersion('${v.title}', \`${v.content.replace(/`/g, '\\`')}\`)">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-bold text-gray-800">${v.title}</h4>
+                                <span class="text-xs text-gray-500">点击查看</span>
+                            </div>
+                            <p class="text-sm text-gray-600">${v.description}</p>
+                        </div>
+                    `).join('');
+
+                    document.getElementById('versionsContainer').innerHTML = versionsHtml;
+                    document.getElementById('optimizePlaceholder').classList.add('hidden');
+                    document.getElementById('optimizeResult').classList.remove('hidden');
+
+                    // 更新用户状态
+                    currentUser.balance = data.user.balance;
+                    updateUserStatus();
+
+                    showToast(`优化成功，消费 ¥${data.cost}`);
+                } else {
+                    if (data.error.includes('余额不足')) {
+                        showInsufficientModal(data.error, 10);
+                    } else {
+                        showToast(data.error);
+                    }
+                }
+            } catch (error) {
+                showToast('优化失败：' + error.message);
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = '开始 AI 优化';
+            }
+        }
+
+        // 查看版本
+        function viewVersion(title, content) {
+            document.getElementById('viewModalTitle').textContent = title;
+            document.getElementById('viewContent').value = content;
+            document.getElementById('viewContentDisplay').innerHTML = marked.parse(content);
+            document.getElementById('viewModal').classList.remove('hidden');
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewModal').classList.add('hidden');
+        }
+
+        function toggleViewEdit() {
+            const display = document.getElementById('viewContentDisplay');
+            const textarea = document.getElementById('viewContent');
+            const btn = document.getElementById('viewEditBtn');
+
+            if (textarea.classList.contains('hidden')) {
+                textarea.classList.remove('hidden');
+                display.classList.add('hidden');
+                btn.textContent = '预览';
+            } else {
+                textarea.classList.add('hidden');
+                display.classList.remove('hidden');
+                display.innerHTML = marked.parse(textarea.value);
+                btn.textContent = '编辑';
+            }
+        }
+
+        // 编辑结果
+        function editResult(id) {
+            const view = document.getElementById(id + 'View');
+            const textarea = document.getElementById(id);
+
+            if (textarea.classList.contains('hidden')) {
+                textarea.classList.remove('hidden');
+                view.classList.add('hidden');
+            } else {
+                textarea.classList.add('hidden');
+                view.classList.remove('hidden');
+                view.innerHTML = marked.parse(textarea.value);
+            }
+        }
+
+        // 复制结果
+        function copyResult(id) {
+            const textarea = document.getElementById(id);
+            navigator.clipboard.writeText(textarea.value);
+            showToast('已复制到剪贴板');
+        }
+
+        // 导出 PDF
+        async function exportPDF(id) {
+            const content = document.getElementById(id).value;
+
+            try {
+                const response = await fetch('/api/export-pdf', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        content: content
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    // 下载 PDF
+                    window.open(data.pdf_url, '_blank');
+
+                    // 更新用户状态
+                    currentUser.balance = data.user.balance;
+                    updateUserStatus();
+
+                    showToast(`导出成功，消费 ¥${data.cost}`);
+                } else {
+                    if (data.error.includes('余额不足')) {
+                        showInsufficientModal(data.error, 2);
+                    } else {
+                        showToast(data.error);
+                    }
+                }
+            } catch (error) {
+                showToast('导出失败：' + error.message);
+            }
+        }
+
+        // 历史记录
+        async function loadHistory() {
+            try {
+                const response = await fetch(`/api/resumes/history?user_id=${currentUser.id}`);
+                const data = await response.json();
+
+                if (data.success && data.resumes.length > 0) {
+                    const historyHtml = data.resumes.map(r => `
+                        <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-400 transition mb-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <div>
+                                    <span class="font-medium text-gray-800">${r.resume_type === 'template' ? '生成模板' : '优化简历'}</span>
+                                    ${r.job_title ? `<span class="text-sm text-gray-500 ml-2">${r.job_title}</span>` : ''}
+                                </div>
+                                <span class="text-xs text-gray-400">${new Date(r.created_at).toLocaleString('zh-CN')}</span>
+                            </div>
+                            <button onclick="viewHistory(${r.id})" class="text-sm text-blue-600 hover:underline">查看详情</button>
+                        </div>
+                    `).join('');
+                    document.getElementById('historyList').innerHTML = historyHtml;
+                } else {
+                    document.getElementById('historyList').innerHTML = `
+                        <div class="text-center text-gray-400 py-16">
+                            <div class="text-5xl mb-3">📋</div>
+                            <p>暂无历史记录</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                showToast('加载失败：' + error.message);
+            }
+        }
+
+        async function viewHistory(id) {
+            // 这里可以调用 API 获取详细内容
+            showToast('查看历史记录功能开发中');
+        }
+
+        // 充值相关
+        function openRechargeModal() {
+            document.getElementById('rechargeModal').classList.remove('hidden');
+        }
+
+        function closeRechargeModal() {
+            document.getElementById('rechargeModal').classList.add('hidden');
+            document.getElementById('rechargeQrArea').classList.add('hidden');
+            selectedRechargeAmount = 0;
+            document.querySelectorAll('.recharge-option').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'bg-blue-50');
+            });
+        }
+
+        function selectRecharge(amount) {
+            selectedRechargeAmount = amount;
+            document.querySelectorAll('.recharge-option').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'bg-blue-50');
+            });
+            event.target.closest('.recharge-option').classList.add('border-blue-500', 'bg-blue-50');
+
+            const phoneDisplay = currentUser.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+            document.getElementById('rechargePhoneNote').textContent = `转账备注：${phoneDisplay}`;
+            document.getElementById('rechargeAmountNote').textContent = `充值金额：¥${amount}`;
+            document.getElementById('rechargeQrArea').classList.remove('hidden');
+        }
+
+        async function confirmRechargeOrder() {
+            if (selectedRechargeAmount === 0) {
+                showToast('请先选择充值金额');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/recharge/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        amount: selectedRechargeAmount
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('充值订单已创建，请联系客服确认到账');
+                    closeRechargeModal();
+                } else {
+                    showToast(data.error || '创建订单失败');
+                }
+            } catch (error) {
+                showToast('网络错误：' + error.message);
+            }
+        }
+
+        // 余额不足弹窗
+        function showInsufficientModal(message, requiredAmount) {
+            document.getElementById('insufficientMsg').textContent = message;
+            document.getElementById('insufficientModal').classList.remove('hidden');
+        }
+
+        function closeInsufficientModal() {
+            document.getElementById('insufficientModal').classList.add('hidden');
+        }
+
+        // Toast 通知
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
