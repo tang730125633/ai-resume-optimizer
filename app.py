@@ -209,6 +209,11 @@ def index():
     """首页"""
     return render_template('index.html')
 
+@app.route('/health')
+def health():
+    """健康检查"""
+    return jsonify({'status': 'ok'}), 200
+
 @app.route('/api/user/login', methods=['POST'])
 def user_login():
     """用户登录/注册"""
