@@ -123,16 +123,16 @@ CREATE INDEX idx_logs_created_at ON activity_logs(created_at);
 -- ============================================
 
 -- 插入测试用户
-INSERT INTO users (phone, free_count, paid_count) VALUES
-('13800138000', 3, 0),
-('13900139000', 1, 2);
+INSERT INTO users (phone, free_count, balance) VALUES
+('13800138000', 3, 0.00),
+('13900139000', 1, 50.00);
 
 -- ============================================
 -- 常用查询示例
 -- ============================================
 
 -- 1. 查询用户信息和剩余次数
--- SELECT id, phone, free_count, paid_count FROM users WHERE phone = '13800138000';
+-- SELECT id, phone, free_count, balance FROM users WHERE phone = '13800138000';
 
 -- 2. 查询用户的所有简历记录
 -- SELECT * FROM resumes WHERE user_id = 1 ORDER BY created_at DESC;

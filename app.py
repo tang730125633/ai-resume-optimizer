@@ -8,13 +8,10 @@ from docx import Document
 import PyPDF2
 import requests
 import json
+import markdown
 from datetime import datetime
 import random
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib.units import cm
+from weasyprint import HTML
 from contextlib import contextmanager
 
 app = Flask(__name__)
@@ -127,41 +124,20 @@ def analyze_resume_with_gemini(resume_text):
     return json.loads(text)
 
 def generate_pdf_from_markdown(content, output_path):
-    """从Markdown内容生成PDF"""
-    # 注册中文字体
-    pdfmetrics.registerFont(TTFont('CJK', '/System/Library/Fonts/STHeiti Light.ttc'))
+    """从Markdown内容生成精美PDF"""
+    # 将Markdown转换为HTML
+    html_content = markdown.markdown(content, extensions=['extra', 'nl2br'])
 
-    c = canvas.Canvas(output_path, pagesize=A4)
-    width, height = A4
+    # 读取HTML模板
+    template_path = os.path.join(app.root_path, 'templates', 'resume_template.html')
+    with open(template_path, 'r', encoding='utf-8') as f:
+        template = f.read()
 
-    # 设置字体
-    c.setFont('CJK', 12)
+    # 插入内容
+    html = template.replace('{{ content }}', html_content)
 
-    # 简单的文本渲染（实际项目中可以用更复杂的Markdown解析）
-    y = height - 2*cm
-    lines = content.split('\n')
-
-    for line in lines:
-        if y < 2*cm:  # 换页
-            c.showPage()
-            c.setFont('CJK', 12)
-            y = height - 2*cm
-
-        # 处理标题
-        if line.startswith('# '):
-            c.setFont('CJK', 16)
-            c.drawString(2*cm, y, line[2:])
-            c.setFont('CJK', 12)
-        elif line.startswith('## '):
-            c.setFont('CJK', 14)
-            c.drawString(2*cm, y, line[3:])
-            c.setFont('CJK', 12)
-        else:
-            c.drawString(2*cm, y, line[:80])  # 限制每行长度
-
-        y -= 0.6*cm
-
-    c.save()
+    # 生成PDF
+    HTML(string=html).write_pdf(output_path)
 
 # ============================================
 # API 路由
