@@ -1,5 +1,2 @@
-[phases.setup]
-nixPkgs = ["libpq"]
-
-[phases.install]
-cmds = ["pip install --no-cache-dir -r requirements.txt"]
+# psycopg2-binary 自带 PostgreSQL 库，不需要额外系统依赖
+# 此文件保留用于 Railway Nixpacks 识别，但不需要配置任何包
