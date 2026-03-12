@@ -79,7 +79,7 @@ def generate_template_with_kimi(job_title, years_exp):
     }
 
     payload = {
-        "model": "kimi-v2.5",
+        "model": "kimi-k2.5",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7
     }
@@ -122,7 +122,7 @@ def analyze_resume_with_kimi(resume_text):
     }
 
     payload = {
-        "model": "kimi-v2.5",
+        "model": "kimi-k2.5",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7
     }
