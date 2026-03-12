@@ -535,23 +535,30 @@ def export_pdf():
     with get_db_connection() as conn:
         cur = conn.cursor()
 
-        # 检查余额
-        cur.execute('SELECT balance FROM users WHERE id = %s', (user_id,))
+        # 查询用户状态（包括免费次数）
+        cur.execute('SELECT free_count, balance FROM users WHERE id = %s', (user_id,))
         user = cur.fetchone()
 
         if not user:
             return jsonify({'success': False, 'error': '用户不存在'}), 404
 
-        if user['balance'] < 2.00:
-            return jsonify({'success': False, 'error': '余额不足，请充值'}), 400
+        cost = 0
 
-        # 扣除余额
-        order_no = generate_order_no('CSM')
-        cur.execute('''
-            INSERT INTO orders (order_no, user_id, order_type, amount, description, payment_method, status, paid_at)
-            VALUES (%s, %s, 'consume', 2.00, '导出PDF', 'balance', 'paid', NOW())
-        ''', (order_no, user_id))
-        cur.execute('UPDATE users SET balance = balance - 2.00 WHERE id = %s', (user_id,))
+        # 判断扣费方式
+        if user['free_count'] > 0:
+            # 有免费次数，导出PDF免费
+            cost = 0
+        elif user['balance'] >= 2.00:
+            # 没有免费次数，扣除余额
+            order_no = generate_order_no('CSM')
+            cur.execute('''
+                INSERT INTO orders (order_no, user_id, order_type, amount, description, payment_method, status, paid_at)
+                VALUES (%s, %s, 'consume', 2.00, '导出PDF', 'balance', 'paid', NOW())
+            ''', (order_no, user_id))
+            cur.execute('UPDATE users SET balance = balance - 2.00 WHERE id = %s', (user_id,))
+            cost = 2
+        else:
+            return jsonify({'success': False, 'error': '余额不足，请充值'}), 400
 
         # 生成PDF
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
