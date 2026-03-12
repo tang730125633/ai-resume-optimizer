@@ -11,7 +11,13 @@ import json
 import markdown
 from datetime import datetime
 import random
-from weasyprint import HTML
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from contextlib import contextmanager
 
 app = Flask(__name__)
@@ -124,20 +130,58 @@ def analyze_resume_with_gemini(resume_text):
     return json.loads(text)
 
 def generate_pdf_from_markdown(content, output_path):
-    """从Markdown内容生成精美PDF"""
-    # 将Markdown转换为HTML
-    html_content = markdown.markdown(content, extensions=['extra', 'nl2br'])
+    """从Markdown内容生成PDF（reportlab实现）"""
+    doc = SimpleDocTemplate(output_path, pagesize=A4,
+                            leftMargin=2*cm, rightMargin=2*cm,
+                            topMargin=2*cm, bottomMargin=2*cm)
 
-    # 读取HTML模板
-    template_path = os.path.join(app.root_path, 'templates', 'resume_template.html')
-    with open(template_path, 'r', encoding='utf-8') as f:
-        template = f.read()
+    # 注册中文字体（Railway 容器内使用系统字体）
+    font_paths = [
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+        '/System/Library/Fonts/STHeiti Light.ttc',
+    ]
+    font_registered = False
+    for fp in font_paths:
+        if os.path.exists(fp):
+            try:
+                pdfmetrics.registerFont(TTFont('CustomFont', fp))
+                font_registered = True
+                break
+            except Exception:
+                continue
 
-    # 插入内容
-    html = template.replace('{{ content }}', html_content)
+    base_font = 'CustomFont' if font_registered else 'Helvetica'
 
-    # 生成PDF
-    HTML(string=html).write_pdf(output_path)
+    styles = {
+        'h1': ParagraphStyle('h1', fontName=base_font, fontSize=20, textColor=colors.HexColor('#2563eb'),
+                             spaceAfter=12, spaceBefore=6, leading=26),
+        'h2': ParagraphStyle('h2', fontName=base_font, fontSize=14, textColor=colors.HexColor('#1e40af'),
+                             spaceAfter=8, spaceBefore=14, leading=20),
+        'h3': ParagraphStyle('h3', fontName=base_font, fontSize=12, textColor=colors.HexColor('#374151'),
+                             spaceAfter=6, spaceBefore=8, leading=16),
+        'body': ParagraphStyle('body', fontName=base_font, fontSize=10, textColor=colors.HexColor('#333333'),
+                               spaceAfter=4, leading=15),
+    }
+
+    story = []
+    for line in content.split('\n'):
+        line = line.strip()
+        if not line:
+            story.append(Spacer(1, 4))
+        elif line.startswith('# '):
+            story.append(Paragraph(line[2:], styles['h1']))
+            story.append(HRFlowable(width='100%', thickness=2, color=colors.HexColor('#2563eb'), spaceAfter=6))
+        elif line.startswith('## '):
+            story.append(Paragraph(line[3:], styles['h2']))
+        elif line.startswith('### '):
+            story.append(Paragraph(line[4:], styles['h3']))
+        elif line.startswith('- ') or line.startswith('* '):
+            story.append(Paragraph(f'• {line[2:]}', styles['body']))
+        else:
+            story.append(Paragraph(line, styles['body']))
+
+    doc.build(story)
 
 # ============================================
 # API 路由
